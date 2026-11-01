@@ -58,7 +58,7 @@ When it is off, `debug` returns one shared resolved promise. Nothing reads `pack
 ## What it does when on
 
 - **Location:** captures the caller's file and line through V8's `Error.prepareStackTrace`, shown relative to `process.cwd()`.
-- **Log file:** `<name>.log` in `process.cwd()`, one per folder, so run a single instrumented process per folder. The name comes from `package.json` with special characters replaced (`@scope/my app` becomes `scope-my-app.log`), or `app.log` if there is no name.
+- **Log file:** `<name>.log` in `process.cwd()`, one per folder. Every Node process that loads the preload deletes it when it exits, so a `fork`ed or `cluster` child that exits early takes the log with it. Run a single instrumented process per folder. The name comes from `package.json` with special characters replaced (`@scope/my app` becomes `scope-my-app.log`), or `app.log` if there is no name.
 - **Terminal:** the project name in cyan and the location dimmed. Color is skipped when stdout isn't a TTY or `NO_COLOR` is set.
 - **File:** `ISO-timestamp [file:line] message`, appended asynchronously in call order. The returned promise resolves once the line is written.
 - **Cleanup:** the file is removed synchronously on `exit`, `SIGINT`, `SIGTERM` and `uncaughtException`. For signals and crashes it then exits with 130, 143 or 1, unless your app has its own listener for that event. In that case your app decides when to exit.
