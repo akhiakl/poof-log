@@ -1,0 +1,4 @@
+# ESLint 10.14.0 requires minimatch ^10.2.6, which has a resource-use flaw (SNYK-JS-MINIMATCH-22111072).
+# 11.0.1+ fixes it and works with ESLint here. Remove once ESLint depends on a fixed minimatch.
+overrides:
+  minimatch: ^11.0.3
