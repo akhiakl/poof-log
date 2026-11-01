@@ -6,7 +6,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const appDir = join(root, 'test/fixtures/app');
-const entry = join(root, 'src/index.ts');
+const src = join(root, 'src/index.ts');
+// The built files that ship: `exports.import` and `exports.require`.
+const distEsm = join(root, 'dist/index.mjs');
+const distCjs = join(root, 'dist/index.cjs');
 const logFile = join(appDir, 'demo-my-app-.log');
 
 type Env = Record<string, string | undefined>;
@@ -21,12 +24,12 @@ function childEnv(overrides: Env): NodeJS.ProcessEnv {
 }
 
 /** Preloads the engine exactly like an app would: no import in the script itself. */
-function args(preload: Preload, script: string): string[] {
+function args(preload: Preload, script: string, entry = src): string[] {
   return [preload, preload === '--import' ? pathToFileURL(entry).href : entry, script];
 }
 
-function run(script: string, env: Env, preload: Preload = '--import') {
-  return spawnSync(process.execPath, args(preload, script), {
+function run(script: string, env: Env, preload: Preload = '--import', entry = src) {
+  return spawnSync(process.execPath, args(preload, script, entry), {
     cwd: appDir,
     env: childEnv(env),
     encoding: 'utf8',
@@ -50,15 +53,27 @@ describe('disabled', () => {
     expect(result.stdout).toBe('LOG:<none>\nSIGINT_LISTENERS:0\n');
     expect(existsSync(logFile)).toBe(false);
   });
+
+  it.each<[string, Preload, string]>([
+    ['dist/index.mjs via --import', '--import', distEsm],
+    ['dist/index.cjs via --require', '--require', distCjs],
+  ])('is a silent no-op in production: %s', (_label, preload, entry) => {
+    const result = run('log-and-exit.mjs', { NODE_ENV: 'production' }, preload, entry);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe('LOG:<none>\nSIGINT_LISTENERS:0\n');
+    expect(existsSync(logFile)).toBe(false);
+  });
 });
 
 describe('enabled', () => {
-  it.each<[string, Env, Preload]>([
-    ['NODE_ENV=development via --import', { NODE_ENV: 'development' }, '--import'],
-    ['DEBUG_ENABLED=true via --import', { DEBUG_ENABLED: 'true' }, '--import'],
-    ['NODE_ENV=development via --require', { NODE_ENV: 'development' }, '--require'],
-  ])('logs to stdout and file, then removes it: %s', (_label, env, preload) => {
-    const result = run('log-and-exit.mjs', env, preload);
+  it.each<[string, Env, Preload, string]>([
+    ['src, NODE_ENV=development via --import', { NODE_ENV: 'development' }, '--import', src],
+    ['src, DEBUG_ENABLED=true via --import', { DEBUG_ENABLED: 'true' }, '--import', src],
+    ['dist/index.mjs via --import', { NODE_ENV: 'development' }, '--import', distEsm],
+    ['dist/index.cjs via --require', { NODE_ENV: 'development' }, '--require', distCjs],
+  ])('logs to stdout and file, then removes it: %s', (_label, env, preload, entry) => {
+    const result = run('log-and-exit.mjs', env, preload, entry);
 
     expect(result.status).toBe(0);
     // No TTY in a spawned child, so the prefix is uncolored.

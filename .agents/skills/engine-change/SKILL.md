@@ -43,3 +43,4 @@ description: How to change poof-log's engine in src/index.ts and its tests witho
 - Strip `NODE_ENV` from the child env: Vitest sets it to `test`.
 - Environment variables over about 128 KB fail to spawn; keep test payloads below that.
 - Fixtures run `src/index.ts` directly through Node's type stripping, so the source must stay erasable TypeScript (no enums, no parameter properties).
+- `test/global-setup.ts` builds `dist/` once before the tests, and some tests preload `dist/index.mjs` (`--import`) and `dist/index.cjs` (`--require`), the files that ship. Preload `src` only for fast cases; anything about packaging or the CJS build belongs on `dist`.
