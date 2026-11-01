@@ -70,6 +70,13 @@ jobs:
         with:
           name: build
           run: pnpm run build
+      # Installs examples/basic against the dist/ built above, so its tsconfig and types stay honest.
+      - uses: akhiakl/ci-workflows@v1.4.0
+        id: example
+        continue-on-error: true
+        with:
+          name: example
+          run: sfw pnpm run typecheck:example
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v7
@@ -82,7 +89,7 @@ jobs:
         if: >-
           steps.format.outcome == 'failure' || steps.lint.outcome == 'failure' ||
           steps.typecheck.outcome == 'failure' || steps.test.outcome == 'failure' ||
-          steps.build.outcome == 'failure'
+          steps.build.outcome == 'failure' || steps.example.outcome == 'failure'
         run: exit 1
 
   # The one check to require in branch protection, plus the sticky PR comment.

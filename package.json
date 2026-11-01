@@ -1,7 +1,7 @@
 {
   "name": "poof-log",
   "version": "1.0.0",
-  "description": "Development-only global debug() for Node.js: file:line logs to stdout and a temp log file that deletes itself on exit.",
+  "description": "Development-only global poof for Node.js: every console method, with [project] [LEVEL] (file:line) prefixes and an optional log file that deletes itself on exit.",
   "type": "module",
   "main": "./dist/index.cjs",
   "types": "./dist/index.d.mts",
@@ -24,6 +24,7 @@
   "scripts": {
     "build": "tsdown",
     "typecheck": "tsc --noEmit",
+    "typecheck:example": "pnpm build && pnpm --dir examples/basic install --ignore-workspace --no-frozen-lockfile && pnpm --dir examples/basic typecheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -34,7 +35,8 @@
     "prepare": "husky"
   },
   "keywords": [
-    "debug",
+    "poof",
+    "console",
     "logger",
     "development"
   ],
