@@ -3,3 +3,4 @@ dist/
 coverage/
 *.log
 ci-results/
+examples/basic/pnpm-lock.yaml
