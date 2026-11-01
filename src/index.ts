@@ -55,7 +55,8 @@ if (scope[INSTALLED] !== true) {
 function init(): (...args: unknown[]) => Promise<void> {
   const cwd = process.cwd();
   const name = readProjectName(cwd);
-  // shortcut: one log file per folder, add the process id to the name if several processes need logs
+  // Known limit: every process started in this folder shares this one log file, and the first to
+  // exit deletes it. Supporting several would mean adding the process id to the name.
   const logPath = join(cwd, `${name}.log`);
   const color = process.stdout.isTTY && env.NO_COLOR === undefined;
   const prefix = color ? `${CYAN}[${name}]${RESET}` : `[${name}]`;
