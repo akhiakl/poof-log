@@ -1,4 +1,4 @@
-debug('about to crash');
+poof.log('about to crash');
 setTimeout(() => {
   throw new Error('boom');
 }, 0);

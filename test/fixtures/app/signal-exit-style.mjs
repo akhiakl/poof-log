@@ -8,7 +8,7 @@ const reraise = () => {
   }
 };
 process.on('SIGINT', reraise);
-debug('ready');
+poof.log('ready');
 await waitForLog('ready');
 process.stdout.write('READY\n');
 setInterval(() => undefined, 1000);

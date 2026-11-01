@@ -6,7 +6,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-  { ignores: ['dist/', 'coverage/'] },
+  { ignores: ['dist/', 'coverage/', 'examples/'] },
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,
   tseslint.configs.stylisticTypeChecked,
@@ -25,9 +25,9 @@ export default defineConfig(
     extends: [tseslint.configs.disableTypeChecked],
   },
   {
-    // Fixtures run with the engine preloaded, so `debug` is a global there.
+    // Fixtures run with the engine preloaded, so `poof` is a global there.
     files: ['test/fixtures/**'],
-    languageOptions: { globals: { debug: 'readonly' } },
+    languageOptions: { globals: { poof: 'readonly' } },
   },
   prettier,
 );

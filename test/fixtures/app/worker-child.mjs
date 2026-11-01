@@ -1,1 +1,1 @@
-debug('from worker');
+poof.log('from worker');

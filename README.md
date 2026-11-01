@@ -1,6 +1,6 @@
 # poof-log
 
-A development-only global `debug()` for Node.js. It prints `[project] (file:line) message` to the terminal. With `DEBUG_FILE=true` it also keeps a timestamped copy in `<project>.log` and deletes that file when the process exits, is interrupted, is killed, or crashes. In production it is a no-op that does no I/O.
+A development-only global `poof` for Node.js. It has every method `console` has (`log`, `info`, `warn`, `error`, `table`, `group`, `time`, `count`, `assert`, `dir`, …) and they behave the same, plus `poof.enabled`. It is `poof`, not `debug`, which is already an npm package. Each output line is prefixed `[project] (file:line)`, with the method name in brackets after the project (`[LOG]`, `[INFO]`, `[WARN]`, …). With `DEBUG_FILE=true` it also keeps a timestamped copy in `<project>.log` and deletes that file when the process exits, is interrupted, is killed, or crashes. In production it is a no-op that does no I/O.
 
 Your application code never imports it.
 
@@ -37,12 +37,13 @@ Your application code never imports it.
 4. Call it anywhere:
 
    ```ts
-   debug('user loaded', user);
+   poof.log('user loaded', user);
+   poof.warn('slow query', { ms: 840 });
    ```
 
-If a script runs without the preload flag, `debug` is undefined and calling it throws. Keep the flag in every script and let the environment gate below decide.
+If a script runs without the preload flag, `poof` is undefined and calling it throws. Keep the flag in every script and let the environment gate below decide.
 
-`debug()` returns nothing and never waits: don't `await` it. Printing and the file write happen in the background.
+Every method returns nothing and never waits: don't `await` it. Printing and the file write happen in the background.
 
 Don't set the flag through `NODE_OPTIONS`: it would load the engine into every Node process you start (npm, nodemon, build tools), and with `DEBUG_FILE=true` they would delete each other's log file.
 
@@ -55,17 +56,33 @@ Don't set the flag through `NODE_OPTIONS`: it would load the engine into every N
 | anything else / unset | `true`          | on     |
 | anything else / unset | unset           | off    |
 
-When it is off, `debug` is an empty function. Nothing reads `package.json`, opens a file, inspects the stack or registers process listeners.
+When it is off, every method is an empty function. Nothing reads `package.json`, opens a file, inspects the stack or registers process listeners.
 
-The log file is a separate, opt-in switch, so it is off unless you set `DEBUG_FILE=true`. Without it you get terminal output only: no file is created, `package.json` is read just for the name in the prefix, and no `exit`, signal or crash listeners are registered. `DEBUG_FILE` does nothing in production.
+The log file is a separate, opt-in switch, so it is off unless you set `DEBUG_FILE=true` (deleted when the process stops) or `DEBUG_FILE=keep` (kept). Without it you get terminal output only: no file is created, `package.json` is read just for the name in the prefix, and no `exit`, signal or crash listeners are registered. `DEBUG_FILE` does nothing in production.
 
 ## What it does when on
 
 - **Location:** captures the caller's file and line through V8's `Error.prepareStackTrace`, shown relative to `process.cwd()`.
 - **Log file** (`DEBUG_FILE=true`): `<name>.log` in `process.cwd()`, one per folder. Every Node process that loads the preload deletes it when it exits, so a `fork`ed or `cluster` child that exits early takes the log with it. Run a single instrumented process per folder. The name comes from `package.json` with special characters replaced (`@scope/my app` becomes `scope-my-app.log`), or `app.log` if there is no name.
-- **Terminal:** the project name in cyan and the location dimmed. Color is skipped when stdout isn't a TTY or `NO_COLOR` is set.
-- **File:** `ISO-timestamp [file:line] message`, appended in the background in call order. `debug()` does not wait for it, and lines still queued when the process exits are lost, which is fine because the file is deleted then anyway.
+- **Streams:** like `console`, `log`, `debug`, `info`, `table` and the rest go to stdout, and `warn`, `error`, `trace` and `assert` go to stderr. A multi-line result such as `poof.table`, or an error with a stack, gets the `[project] (file:line)` header on its own line with the output below it. Objects are fully expanded, not cut at depth 2 as `console` does.
+- **Terminal:** the project name in cyan, the location dimmed, and the method name (`[INFO]`) colored: `debug` magenta, `info` green, `warn` yellow, `error` red, `log` white, the rest blue. Color is decided per stream, so stdout can be colored while stderr is redirected to a file. A stream that isn't a TTY gets no color, unless `FORCE_COLOR` is set. `NO_COLOR` always turns it off.
+- **File:** `ISO-timestamp [file:line] message`, appended in the background in call order. The methods do not wait for it, and lines still queued when the process exits are lost, which is fine because the file is deleted then anyway.
+- **Keeping the log** (`DEBUG_FILE=keep`): the same `<name>.log`, but it is never deleted and every run appends to it, starting with a `[poof-log] started (pid …)` line. Each line is written before the call returns, so nothing is lost on a crash or a kill, and no `exit` or signal listeners are registered. It costs a small synchronous write per call, which is fine for development. Delete the file yourself when you are done; `*.log` is usually already in `.gitignore`.
 - **Cleanup** (`DEBUG_FILE=true`): the file is removed synchronously on `exit`, `SIGINT`, `SIGTERM` and `uncaughtException`. For signals and crashes it then exits with 130, 143 or 1, unless your app has its own listener for that event. In that case your app decides when to exit.
+
+## Try it
+
+`examples/basic` is a small TypeScript HTTP server set up the way your own app should be: `poof-log` as a dependency, the preload flag in the `dev` script, and `"types": ["node", "poof-log"]` in `tsconfig.json`. From a clone:
+
+```bash
+pnpm install && pnpm build          # in the repo root
+cd examples/basic
+pnpm install --ignore-workspace
+pnpm dev                            # or pnpm dev:file, which also writes poof-log-example.log here
+curl localhost:3000/users/1         # also try /users/9 and /boom
+```
+
+The log file is named after `name` in the example's `package.json` and is deleted when you stop the server. `pnpm tour` runs `src/tour.ts`, which calls every `poof` method once: the levels, `table`, `dir`, `group`, `count`, `time`, `assert`, `trace` and `enabled`.
 
 ## Develop
 
