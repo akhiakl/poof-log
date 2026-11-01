@@ -1,0 +1,28 @@
+name: PR title
+
+# Squash merges use the PR title as the commit on main, so it must be a Conventional Commit too.
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize]
+
+# The called workflow cannot be granted more than the caller allows.
+permissions:
+  pull-requests: read
+
+jobs:
+  title:
+    uses: akhiakl/ci-workflows/.github/workflows/conventional-pr-title.yml@a3bacb0289be0bd6a0a37c18e801ac5ce1594b23 # v1.4.0
+    with:
+      # Same types as commitlint's config-conventional.
+      types: |
+        build
+        chore
+        ci
+        docs
+        feat
+        fix
+        perf
+        refactor
+        revert
+        style
+        test
