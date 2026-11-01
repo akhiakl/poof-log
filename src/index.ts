@@ -1,0 +1,176 @@
+/**
+ * poof-log — a development-only global `debug()` engine.
+ *
+ * Never imported by application code. Node preloads it from the dev script:
+ *
+ *   node --import poof-log src/server.js     (ESM apps)
+ *   node --require poof-log src/server.js    (CJS apps)
+ *   NODE_OPTIONS="--import poof-log" ...     (no script change at all)
+ *
+ * When enabled it prints `[project] (file:line) message` to stdout, appends a
+ * timestamped copy to `<project>.log` in the working directory, and deletes that
+ * file again when the process exits, is interrupted, is killed, or crashes.
+ * When disabled (production, or not opted in) `debug` is a pre-bound no-op.
+ */
+import { readFileSync, unlinkSync } from 'node:fs';
+import { open } from 'node:fs/promises';
+import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { inspect } from 'node:util';
+
+// Shipped in the emitted .d.mts/.d.cts. Apps opt into it with one line,
+// `"types": ["node", "poof-log"]` in tsconfig or `/// <reference types="poof-log" />`,
+// because nothing imports this module for TypeScript to discover it through.
+declare global {
+  // `var` is what makes this a property of `globalThis`.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  var debug: (...args: any[]) => Promise<void>;
+}
+
+/** One promise shared by every disabled call, so a no-op `debug()` allocates nothing. */
+const RESOLVED: Promise<void> = Promise.resolve();
+const NOOP = (): Promise<void> => RESOLVED;
+
+/** Marks the process once, so loading both the ESM and CJS builds installs a single engine. */
+const INSTALLED = Symbol.for('poof-log.installed');
+
+const CYAN = '\x1b[36m';
+const DIM = '\x1b[2m';
+const RESET = '\x1b[0m';
+
+const env = process.env;
+// Decided once at boot. Production always wins over the opt-in flag.
+const enabled =
+  env.NODE_ENV !== 'production' && (env.NODE_ENV === 'development' || env.DEBUG_ENABLED === 'true');
+
+const scope = globalThis as typeof globalThis & { [INSTALLED]?: true };
+if (scope[INSTALLED] !== true) {
+  scope[INSTALLED] = true;
+  // Disabled: bind the no-op and stop here. No package.json read, no file,
+  // no process listeners, no stack inspection on later calls.
+  globalThis.debug = enabled ? init() : NOOP;
+}
+
+/** Sets up the log file, the cleanup listeners and the live `debug` function. */
+function init(): (...args: unknown[]) => Promise<void> {
+  const cwd = process.cwd();
+  const name = readProjectName(cwd);
+  const logPath = join(cwd, `${name}.log`);
+  const color = process.stdout.isTTY && env.NO_COLOR === undefined;
+  const prefix = color ? `${CYAN}[${name}]${RESET}` : `[${name}]`;
+
+  // The file is opened once and every line goes through this handle. Once
+  // cleanup has unlinked the path, a write still in flight lands on the
+  // unlinked file instead of creating a new one.
+  const handle = open(logPath, 'a').catch((): undefined => undefined);
+  // Writes are chained so lines reach the file in call order.
+  let tail: Promise<void> = RESOLVED;
+  let closed = false;
+
+  const debug = (...args: unknown[]): Promise<void> => {
+    const where = locate(cwd, debug);
+    const plain = format(args, false);
+    process.stdout.write(
+      color
+        ? `${prefix} ${DIM}(${where})${RESET} ${format(args, true)}\n`
+        : `${prefix} (${where}) ${plain}\n`,
+    );
+    if (closed) return RESOLVED;
+
+    const line = `${new Date().toISOString()} [${where}] ${plain}\n`;
+    tail = tail
+      .then(async () => {
+        const file = await handle;
+        if (file !== undefined && !closed) await file.appendFile(line);
+      })
+      .catch(() => undefined);
+    return tail;
+  };
+
+  /** Removes the log file. Synchronous, because 'exit' listeners cannot await. */
+  const cleanup = (): void => {
+    if (closed) return;
+    closed = true;
+    try {
+      unlinkSync(logPath);
+    } catch {
+      // Never created, or already removed.
+    }
+  };
+
+  process.on('exit', cleanup);
+  // Registering a listener replaces Node's default "terminate" behaviour, so
+  // exit with the conventional 128 + signal code, unless the app has its own
+  // listener and will shut itself down.
+  process.on('SIGINT', () => {
+    cleanup();
+    if (process.listenerCount('SIGINT') === 1) process.exit(130);
+  });
+  process.on('SIGTERM', () => {
+    cleanup();
+    if (process.listenerCount('SIGTERM') === 1) process.exit(143);
+  });
+  // Same for crashes: without this exit the error would be swallowed.
+  process.on('uncaughtException', (error) => {
+    cleanup();
+    if (process.listenerCount('uncaughtException') === 1) {
+      process.stderr.write(`${inspect(error)}\n`);
+      process.exit(1);
+    }
+  });
+
+  return debug;
+}
+
+/**
+ * Returns `relative/path/to/file.ts:line` for the code that called `boundary`.
+ * Swaps in a V8 `prepareStackTrace` that hands back raw CallSite objects, and
+ * restores the original handler and stack limit in `finally`.
+ */
+function locate(cwd: string, boundary: (...args: never[]) => unknown): string {
+  // Saved only to be put back, never called, so `this` binding is irrelevant.
+  // eslint-disable-next-line @typescript-eslint/unbound-method
+  const originalPrepare = Error.prepareStackTrace;
+  const originalLimit = Error.stackTraceLimit;
+  try {
+    // The caller is the only frame needed once `boundary` is cut off.
+    Error.stackTraceLimit = 1;
+    Error.prepareStackTrace = (_error, frames) => frames;
+    const holder: { stack?: NodeJS.CallSite[] } = {};
+    Error.captureStackTrace(holder, boundary);
+
+    const frame = holder.stack?.[0];
+    const file = frame?.getFileName();
+    if (frame === undefined || typeof file !== 'string') return '<unknown>';
+    // ESM frames report file:// URLs, CJS frames report plain paths.
+    const path = file.startsWith('file://') ? fileURLToPath(file) : file;
+    return `${relative(cwd, path)}:${String(frame.getLineNumber() ?? '?')}`;
+  } catch {
+    return '<unknown>';
+  } finally {
+    Error.prepareStackTrace = originalPrepare;
+    Error.stackTraceLimit = originalLimit;
+  }
+}
+
+/** Reads `name` from ./package.json and makes it safe to use as a file name. */
+function readProjectName(cwd: string): string {
+  try {
+    const pkg: unknown = JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8'));
+    if (typeof pkg === 'object' && pkg !== null && 'name' in pkg && typeof pkg.name === 'string') {
+      // "@scope/my app!" -> "scope-my-app-"
+      const safe = pkg.name.replace(/^@/, '').replace(/[^a-zA-Z0-9._-]+/g, '-');
+      if (safe !== '') return safe;
+    }
+  } catch {
+    // No package.json, or not valid JSON.
+  }
+  return 'app';
+}
+
+/** Strings as-is, everything else fully expanded by util.inspect. */
+function format(args: readonly unknown[], colors: boolean): string {
+  return args
+    .map((arg) => (typeof arg === 'string' ? arg : inspect(arg, { depth: null, colors })))
+    .join(' ');
+}
