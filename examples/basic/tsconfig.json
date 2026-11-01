@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "nodenext",
+    "strict": true,
+    "erasableSyntaxOnly": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    // "poof-log" is what makes the global `poof` visible to TypeScript.
+    "types": ["node", "poof-log"]
+  },
+  "include": ["src"]
+}
