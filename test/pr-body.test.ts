@@ -43,6 +43,21 @@ describe('check-pr-body.sh', () => {
     expect(result.stdout).toContain('Checklist');
   });
 
+  it('fails when the checklist heading is kept but every box is deleted', () => {
+    const result = check(filled.replace(/^- \[x\].*\n/gm, ''));
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain('Keep all 4 checklist items');
+  });
+
+  it('accepts an uppercase [X]', () => {
+    expect(check(filled.replace('- [x] Tests', '- [X] Tests')).status).toBe(0);
+  });
+
+  it('is not fooled by a very long description', () => {
+    const long = `${filled.replace('- [x] Tests', '- [ ] Tests')}\n\n${'a'.repeat(100_000)}`;
+    expect(check(long).status).toBe(1);
+  });
+
   it('accepts Windows line endings', () => {
     expect(check(filled.replaceAll('\n', '\r\n')).status).toBe(0);
   });

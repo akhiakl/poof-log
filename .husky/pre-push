@@ -1,1 +1,7 @@
-sh .husky/check-branch-name
+# Git feeds one line per pushed ref: <local ref> <local sha> <remote ref> <remote sha>.
+# Check the branch name being pushed, which can differ from the one checked out.
+while read -r _local_ref local_sha remote_ref _remote_sha; do
+  case "$remote_ref" in refs/heads/*) ;; *) continue ;; esac # tags etc.
+  case "$local_sha" in *[!0]*) ;; *) continue ;; esac        # deleting a branch
+  sh .husky/check-branch-name "${remote_ref#refs/heads/}" || exit 1
+done

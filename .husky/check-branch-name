@@ -2,9 +2,14 @@
 #   main | master | develop
 #   feature|bugfix|hotfix|chore/<lowercase-kebab>   e.g. feature/add-no-color
 #   release/<lowercase, dots allowed>               e.g. release/v1.2.0
-# Sourced by the pre-commit and pre-push hooks.
+# Run by the pre-commit hook (current branch) and the pre-push hook (each pushed branch).
 
-branch=$(git symbolic-ref --short -q HEAD) || exit 0 # detached HEAD (rebase, bisect)
+# Optional $1: a branch name to check. Default: the current branch.
+if [ -n "${1:-}" ]; then
+  branch=$1
+else
+  branch=$(git symbolic-ref --short -q HEAD) || exit 0 # detached HEAD (rebase, bisect)
+fi
 
 pattern='^(main|master|develop)$|^(feature|bugfix|hotfix|chore)/[a-z0-9]+(-[a-z0-9]+)*$|^release/[a-z0-9]+([.-][a-z0-9]+)*$'
 
