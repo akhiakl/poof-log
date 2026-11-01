@@ -7,12 +7,12 @@ description: How poof-log's GitHub Actions, Dependabot, CodeQL, Snyk and depende
 
 ## Workflows (`.github/workflows/`)
 
-| File              | What                                                                                       |
-| ----------------- | ------------------------------------------------------------------------------------------ |
-| `ci.yml`          | Format, lint, typecheck, test, build on Node 24 and 26, then one `Quality Gate` PR comment |
-| `pr-title.yml`    | Conventional PR title, via a shared workflow in `akhiakl/ci-workflows`                     |
-| `pr-template.yml` | Runs `.github/scripts/check-pr-body.sh`; its tests are `test/pr-body.test.ts`              |
-| `codeql.yml`      | CodeQL for `javascript-typescript`                                                         |
+| File              | What                                                                                                                         |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`          | Format, lint, typecheck, test, build, then typecheck `examples/basic`, on Node 24 and 26, then one `Quality Gate` PR comment |
+| `pr-title.yml`    | Conventional PR title, via a shared workflow in `akhiakl/ci-workflows`                                                       |
+| `pr-template.yml` | Runs `.github/scripts/check-pr-body.sh`; its tests are `test/pr-body.test.ts`                                                |
+| `codeql.yml`      | CodeQL for `javascript-typescript`                                                                                           |
 
 ## Rules
 

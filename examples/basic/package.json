@@ -1,0 +1,18 @@
+{
+  "name": "poof-log-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_ENV=development node --import poof-log src/server.ts",
+    "dev:file": "NODE_ENV=development DEBUG_FILE=true node --import poof-log src/server.ts",
+    "tour": "NODE_ENV=development node --import poof-log src/tour.ts",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "poof-log": "link:../.."
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3"
+  }
+}
