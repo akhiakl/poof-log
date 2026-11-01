@@ -1,6 +1,6 @@
 # poof-log
 
-A development-only global `debug()` for Node.js. It prints `[project] (file:line) message` to the terminal, keeps a timestamped copy in `<project>.log`, and deletes that file when the process exits, is interrupted, is killed, or crashes. In production it is a no-op that does no I/O.
+A development-only global `debug()` for Node.js. It prints `[project] (file:line) message` to the terminal. With `DEBUG_FILE=true` it also keeps a timestamped copy in `<project>.log` and deletes that file when the process exits, is interrupted, is killed, or crashes. In production it is a no-op that does no I/O.
 
 Your application code never imports it.
 
@@ -37,12 +37,14 @@ Your application code never imports it.
 4. Call it anywhere:
 
    ```ts
-   await debug('user loaded', user);
+   debug('user loaded', user);
    ```
 
 If a script runs without the preload flag, `debug` is undefined and calling it throws. Keep the flag in every script and let the environment gate below decide.
 
-Don't set the flag through `NODE_OPTIONS`: it would load the engine into every Node process you start (npm, nodemon, build tools), and they would delete each other's log file.
+`debug()` returns nothing and never waits: don't `await` it. Printing and the file write happen in the background.
+
+Don't set the flag through `NODE_OPTIONS`: it would load the engine into every Node process you start (npm, nodemon, build tools), and with `DEBUG_FILE=true` they would delete each other's log file.
 
 ## When it is on
 
@@ -53,15 +55,17 @@ Don't set the flag through `NODE_OPTIONS`: it would load the engine into every N
 | anything else / unset | `true`          | on     |
 | anything else / unset | unset           | off    |
 
-When it is off, `debug` returns one shared resolved promise. Nothing reads `package.json`, opens a file, inspects the stack or registers process listeners.
+When it is off, `debug` is an empty function. Nothing reads `package.json`, opens a file, inspects the stack or registers process listeners.
+
+The log file is a separate, opt-in switch, so it is off unless you set `DEBUG_FILE=true`. Without it you get terminal output only: no file is created, `package.json` is read just for the name in the prefix, and no `exit`, signal or crash listeners are registered. `DEBUG_FILE` does nothing in production.
 
 ## What it does when on
 
 - **Location:** captures the caller's file and line through V8's `Error.prepareStackTrace`, shown relative to `process.cwd()`.
-- **Log file:** `<name>.log` in `process.cwd()`, one per folder. Every Node process that loads the preload deletes it when it exits, so a `fork`ed or `cluster` child that exits early takes the log with it. Run a single instrumented process per folder. The name comes from `package.json` with special characters replaced (`@scope/my app` becomes `scope-my-app.log`), or `app.log` if there is no name.
+- **Log file** (`DEBUG_FILE=true`): `<name>.log` in `process.cwd()`, one per folder. Every Node process that loads the preload deletes it when it exits, so a `fork`ed or `cluster` child that exits early takes the log with it. Run a single instrumented process per folder. The name comes from `package.json` with special characters replaced (`@scope/my app` becomes `scope-my-app.log`), or `app.log` if there is no name.
 - **Terminal:** the project name in cyan and the location dimmed. Color is skipped when stdout isn't a TTY or `NO_COLOR` is set.
-- **File:** `ISO-timestamp [file:line] message`, appended asynchronously in call order. The returned promise resolves once the line is written.
-- **Cleanup:** the file is removed synchronously on `exit`, `SIGINT`, `SIGTERM` and `uncaughtException`. For signals and crashes it then exits with 130, 143 or 1, unless your app has its own listener for that event. In that case your app decides when to exit.
+- **File:** `ISO-timestamp [file:line] message`, appended in the background in call order. `debug()` does not wait for it, and lines still queued when the process exits are lost, which is fine because the file is deleted then anyway.
+- **Cleanup** (`DEBUG_FILE=true`): the file is removed synchronously on `exit`, `SIGINT`, `SIGTERM` and `uncaughtException`. For signals and crashes it then exits with 130, 143 or 1, unless your app has its own listener for that event. In that case your app decides when to exit.
 
 ## Develop
 

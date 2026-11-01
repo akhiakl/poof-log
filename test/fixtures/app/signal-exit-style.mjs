@@ -1,3 +1,5 @@
+import { waitForLog } from './wait-for-log.mjs';
+
 // Mimics signal-exit v4: re-raise the signal only once every other listener is gone.
 const reraise = () => {
   if (process.listeners('SIGINT').length === 1) {
@@ -6,6 +8,7 @@ const reraise = () => {
   }
 };
 process.on('SIGINT', reraise);
-await debug('ready');
+debug('ready');
+await waitForLog('ready');
 process.stdout.write('READY\n');
 setInterval(() => undefined, 1000);

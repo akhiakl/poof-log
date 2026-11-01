@@ -1,1 +1,1 @@
-await debug('from worker');
+debug('from worker');

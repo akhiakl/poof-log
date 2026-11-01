@@ -1,5 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
-await debug('hello', { nested: { deep: [1, 2] } });
+import { waitForLog } from './wait-for-log.mjs';
+
+const returned = debug('hello', { nested: { deep: [1, 2] } });
+process.stdout.write(`RETURN:${String(returned)}\n`);
+if (process.env.DEBUG_FILE === 'true') await waitForLog('hello');
 
 // Report what the engine left behind while the process is still alive.
 const log = 'demo-my-app-.log';

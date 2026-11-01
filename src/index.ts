@@ -6,10 +6,12 @@
  *   node --import poof-log src/server.js     (ESM apps)
  *   node --require poof-log src/server.js    (CJS apps)
  *
- * When enabled it prints `[project] (file:line) message` to stdout, appends a
- * timestamped copy to `<project>.log` in the working directory, and deletes that
- * file again when the process exits, is interrupted, is killed, or crashes.
- * When disabled (production, or not opted in) `debug` is a pre-bound no-op.
+ * When enabled it prints `[project] (file:line) message` to stdout. With
+ * DEBUG_FILE=true it also appends a timestamped copy to `<project>.log` in the
+ * working directory, and deletes that file again when the process exits, is
+ * interrupted, is killed, or crashes. `debug()` returns at once: nothing waits
+ * for the file write. When disabled (production, or not opted in) `debug` is a
+ * pre-bound no-op.
  */
 import { readFileSync, unlinkSync } from 'node:fs';
 import { open } from 'node:fs/promises';
@@ -24,12 +26,11 @@ import { isMainThread } from 'node:worker_threads';
 declare global {
   // `var` is what makes this a property of `globalThis`.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  var debug: (...args: any[]) => Promise<void>;
+  var debug: (...args: any[]) => void;
 }
 
-/** One promise shared by every disabled call, so a no-op `debug()` allocates nothing. */
-const RESOLVED: Promise<void> = Promise.resolve();
-const NOOP = (): Promise<void> => RESOLVED;
+/** What a disabled `debug()` runs: nothing, and it allocates nothing. */
+const NOOP = (): void => undefined;
 
 /** Marks the process once, so loading both the ESM and CJS builds installs a single engine. */
 const INSTALLED = Symbol.for('poof-log.installed');
@@ -39,9 +40,11 @@ const DIM = '\x1b[2m';
 const RESET = '\x1b[0m';
 
 const env = process.env;
-// Decided once at boot. Production always wins over the opt-in flag.
+// Decided once at boot. Production always wins over the opt-in flags.
 const enabled =
   env.NODE_ENV !== 'production' && (env.NODE_ENV === 'development' || env.DEBUG_ENABLED === 'true');
+// The log file is optional and off unless asked for.
+const toFile = env.DEBUG_FILE === 'true';
 
 const scope = globalThis as typeof globalThis & { [INSTALLED]?: true };
 if (scope[INSTALLED] !== true) {
@@ -51,8 +54,8 @@ if (scope[INSTALLED] !== true) {
   globalThis.debug = enabled ? init() : NOOP;
 }
 
-/** Sets up the log file, the cleanup listeners and the live `debug` function. */
-function init(): (...args: unknown[]) => Promise<void> {
+/** Sets up the live `debug` function, plus the log file and its cleanup listeners if asked. */
+function init(): (...args: unknown[]) => void {
   const cwd = process.cwd();
   const name = readProjectName(cwd);
   // Known limit: every process started in this folder shares this one log file, and the first to
@@ -64,12 +67,12 @@ function init(): (...args: unknown[]) => Promise<void> {
   // The file is opened once and every line goes through this handle. Once
   // cleanup has unlinked the path, a write still in flight lands on the
   // unlinked file instead of creating a new one.
-  const handle = open(logPath, 'a').catch((): undefined => undefined);
-  // Writes are chained so lines reach the file in call order.
-  let tail: Promise<void> = RESOLVED;
+  const handle = toFile ? open(logPath, 'a').catch((): undefined => undefined) : undefined;
+  // Writes run in the background, chained so lines reach the file in call order.
+  let tail: Promise<void> = Promise.resolve();
   let closed = false;
 
-  const debug = (...args: unknown[]): Promise<void> => {
+  const debug = (...args: unknown[]): void => {
     const where = locate(cwd, debug);
     const plain = format(args, false);
     process.stdout.write(
@@ -77,7 +80,7 @@ function init(): (...args: unknown[]) => Promise<void> {
         ? `${prefix} ${DIM}(${where})${RESET} ${format(args, true)}\n`
         : `${prefix} (${where}) ${plain}\n`,
     );
-    if (closed) return RESOLVED;
+    if (handle === undefined || closed) return;
 
     const line = `${new Date().toISOString()} [${where}] ${plain}\n`;
     tail = tail
@@ -86,22 +89,22 @@ function init(): (...args: unknown[]) => Promise<void> {
         if (file !== undefined && !closed) await file.appendFile(line);
       })
       .catch(() => undefined);
-    return tail;
   };
 
-  /** Removes the log file. Synchronous, because 'exit' listeners cannot await. */
-  const cleanup = (): void => {
-    if (closed) return;
-    closed = true;
-    try {
-      unlinkSync(logPath);
-    } catch {
-      // Never created, or already removed.
-    }
-  };
+  // Without a log file there is nothing to clean up, so no process listeners at all.
+  // Workers load this preload too, and their exit must not delete the main thread's log file.
+  if (toFile && isMainThread) {
+    /** Removes the log file. Synchronous, because 'exit' listeners cannot await. */
+    const cleanup = (): void => {
+      if (closed) return;
+      closed = true;
+      try {
+        unlinkSync(logPath);
+      } catch {
+        // Never created, or already removed.
+      }
+    };
 
-  // Workers load this preload too. Their exit must not delete the main thread's log file.
-  if (isMainThread) {
     process.on('exit', cleanup);
     // A listener replaces Node's default "terminate" behaviour, so exit with the conventional
     // 128 + signal code ourselves. `once` removes our listener before it runs, so a library that

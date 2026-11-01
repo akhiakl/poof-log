@@ -1,12 +1,14 @@
 # poof-log
 
-A development-only global `debug()` for Node.js. Apps preload it (`node --import poof-log`, or `--require`), never import it. When on (`NODE_ENV=development` or `DEBUG_ENABLED=true`, never in production) it prints `[project] (file:line) message`, appends to `<project>.log` and deletes that file when the process stops. When off it does nothing.
+A development-only global `debug()` for Node.js. Apps preload it (`node --import poof-log`, or `--require`), never import it. When on (`NODE_ENV=development` or `DEBUG_ENABLED=true`, never in production) it prints `[project] (file:line) message`. With `DEBUG_FILE=true` it also appends to `<project>.log` and deletes that file when the process stops. When off it does nothing.
 
 This file is the single source of rules for every AI agent and human contributor. `CLAUDE.md` only imports it. Do not fork the rules into agent-specific files.
 
 ## Hard constraints
 
-- **Zero cost when off.** The off path is one shared resolved promise: no `package.json` read, no file, no listeners, no stack inspection. All enabled-only work lives in `init()`, which the gate calls.
+- **Zero cost when off.** The off path is an empty function: no `package.json` read, no file, no listeners, no stack inspection. All enabled-only work lives in `init()`, which the gate calls.
+- **`debug()` returns `void` and never waits.** The file write is a background task. Do not make callers `await` it or return its promise.
+- **The log file is opt-in** (`DEBUG_FILE=true`). Without it there is no file and no process listeners.
 - **No runtime dependencies.** Node built-ins only. Dev tooling stays in `devDependencies`.
 - **Never imported by app code.** The README, tests and examples use the preload flags only. The global type reaches TypeScript through `"types": ["poof-log"]`.
 - **Supports Node >=24.** Do not use APIs newer than that, and keep `@types/node` on 24.x.
