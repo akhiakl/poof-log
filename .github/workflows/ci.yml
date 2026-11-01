@@ -102,7 +102,7 @@ jobs:
           marker: '<!-- poof-log-quality-gate -->'
           title: Quality Gate
           status: |
-            Lint, Typecheck & Test (Node 24 & 26)=${{ needs.verify.result }}
+            Lint, Typecheck & Test=${{ needs.verify.result }}
       - name: Fail if verify failed
         if: needs.verify.result != 'success'
         run: exit 1
