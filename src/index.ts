@@ -72,9 +72,12 @@ function init(): (...args: unknown[]) => void {
   let tail: Promise<void> = Promise.resolve();
   let closed = false;
 
+  // Each rendering walks every argument, so build the plain one only if the terminal or file uses it.
+  const needsPlain = !color || handle !== undefined;
+
   const debug = (...args: unknown[]): void => {
     const where = locate(cwd, debug);
-    const plain = format(args, false);
+    const plain = needsPlain ? format(args, false) : '';
     process.stdout.write(
       color
         ? `${prefix} ${DIM}(${where})${RESET} ${format(args, true)}\n`
