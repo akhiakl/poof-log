@@ -19,40 +19,40 @@ jobs:
         # Keep in sync with "engines" in package.json (>=24).
         version: [24, 26]
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7
       # pnpm's version comes from package.json's "packageManager".
-      - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+      - uses: pnpm/setup@v3
         with:
           runtime: node@${{ matrix.version }}
           cache: true
           install: false
       # Each check tees its output to ci-results/ and keeps going on failure,
       # so the Quality Gate comment lists every failure at once.
-      # Pinned to v1.4.0's commit: the moving `v1` tag lags behind it.
-      - uses: akhiakl/ci-workflows@a3bacb0289be0bd6a0a37c18e801ac5ce1594b23 # v1.4.0
+      # v1.4.0, not the moving `v1` tag, which lags 12 commits behind it.
+      - uses: akhiakl/ci-workflows@v1.4.0
         id: install
         with:
           name: install
           run: pnpm install --frozen-lockfile
-      - uses: akhiakl/ci-workflows@a3bacb0289be0bd6a0a37c18e801ac5ce1594b23 # v1.4.0
+      - uses: akhiakl/ci-workflows@v1.4.0
         id: format
         continue-on-error: true
         with:
           name: format
           run: pnpm run format:check
-      - uses: akhiakl/ci-workflows@a3bacb0289be0bd6a0a37c18e801ac5ce1594b23 # v1.4.0
+      - uses: akhiakl/ci-workflows@v1.4.0
         id: lint
         continue-on-error: true
         with:
           name: lint
           run: pnpm run lint
-      - uses: akhiakl/ci-workflows@a3bacb0289be0bd6a0a37c18e801ac5ce1594b23 # v1.4.0
+      - uses: akhiakl/ci-workflows@v1.4.0
         id: typecheck
         continue-on-error: true
         with:
           name: typecheck
           run: pnpm run typecheck
-      - uses: akhiakl/ci-workflows@a3bacb0289be0bd6a0a37c18e801ac5ce1594b23 # v1.4.0
+      - uses: akhiakl/ci-workflows@v1.4.0
         id: test
         continue-on-error: true
         with:
@@ -60,7 +60,7 @@ jobs:
           run: >-
             pnpm run test --reporter=default --reporter=json
             --outputFile.json=ci-results/test-results.json
-      - uses: akhiakl/ci-workflows@a3bacb0289be0bd6a0a37c18e801ac5ce1594b23 # v1.4.0
+      - uses: akhiakl/ci-workflows@v1.4.0
         id: build
         continue-on-error: true
         with:
@@ -68,7 +68,7 @@ jobs:
           run: pnpm run build
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        uses: actions/upload-artifact@v7
         with:
           name: ci-results-node-${{ matrix.version }}
           path: ci-results/
@@ -92,7 +92,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: akhiakl/ci-workflows/gate@a3bacb0289be0bd6a0a37c18e801ac5ce1594b23 # v1.4.0
+      - uses: akhiakl/ci-workflows/gate@v1.4.0
         with:
           marker: '<!-- poof-log-quality-gate -->'
           title: Quality Gate

@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   title:
-    uses: akhiakl/ci-workflows/.github/workflows/conventional-pr-title.yml@a3bacb0289be0bd6a0a37c18e801ac5ce1594b23 # v1.4.0
+    uses: akhiakl/ci-workflows/.github/workflows/conventional-pr-title.yml@v1.4.0
     with:
       # Same types as commitlint's config-conventional.
       types: |
