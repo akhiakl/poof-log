@@ -76,3 +76,4 @@ Git hooks (husky) install with `pnpm install`.
 - **Branches** follow [Conventional Branch](https://conventional-branch.github.io): `feature/…`, `bugfix/…`, `hotfix/…`, `chore/…`, `release/…`, in lowercase-kebab-case. Checked on commit and push.
 - **Commits** follow [Conventional Commits](https://www.conventionalcommits.org), e.g. `feat: add NO_COLOR support`. Checked by commitlint.
 - **Pre-commit** runs ESLint and Prettier on staged files, then a full type-check.
+- **Pull requests** fill in the template (every section, every box ticked) and use a Conventional Commit title. Both are checked in CI, alongside format, lint, type-check, tests and build on Node 24 and 26.

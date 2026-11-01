@@ -1,0 +1,23 @@
+name: PR template
+
+# `synchronize` too, so the check reports on every new commit when it's required.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: PR description filled in
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github/scripts
+      - name: Check the PR description against the template
+        # Passed through env, never interpolated into the script, so the body can't inject shell.
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: bash .github/scripts/check-pr-body.sh
