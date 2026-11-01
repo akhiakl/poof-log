@@ -1,0 +1,16 @@
+# Conventional Branch names (https://conventional-branch.github.io):
+#   main | master | develop
+#   feature|bugfix|hotfix|chore/<lowercase-kebab>   e.g. feature/add-no-color
+#   release/<lowercase, dots allowed>               e.g. release/v1.2.0
+# Sourced by the pre-commit and pre-push hooks.
+
+branch=$(git symbolic-ref --short -q HEAD) || exit 0 # detached HEAD (rebase, bisect)
+
+pattern='^(main|master|develop)$|^(feature|bugfix|hotfix|chore)/[a-z0-9]+(-[a-z0-9]+)*$|^release/[a-z0-9]+([.-][a-z0-9]+)*$'
+
+if ! printf '%s\n' "$branch" | grep -Eq "$pattern"; then
+  echo "✖ Branch \"$branch\" does not follow Conventional Branch naming."
+  echo "  Use feature/, bugfix/, hotfix/, chore/ or release/ with lowercase-kebab-case,"
+  echo "  e.g. feature/add-no-color. Rename with: git branch -m <new-name>"
+  exit 1
+fi
