@@ -6,7 +6,7 @@ Your application code never imports it.
 
 ## Use
 
-1. Install it as a dev dependency.
+1. Install it as a regular dependency, not a dev one. A production install skips dev dependencies, and `node --import poof-log` then fails to start. In production it does nothing.
 2. Preload it from your dev script:
 
    ```jsonc
@@ -16,12 +16,11 @@ Your application code never imports it.
    }
    ```
 
-   | App                | Flag                               |
-   | ------------------ | ---------------------------------- |
-   | ESM                | `node --import poof-log …`         |
-   | CommonJS           | `node --require poof-log …`        |
-   | TypeScript via tsx | `tsx --import poof-log …`          |
-   | No script change   | `NODE_OPTIONS="--import poof-log"` |
+   | App                | Flag                        |
+   | ------------------ | --------------------------- |
+   | ESM                | `node --import poof-log …`  |
+   | CommonJS           | `node --require poof-log …` |
+   | TypeScript via tsx | `tsx --import poof-log …`   |
 
 3. Get the global type. TypeScript can't find a module nothing imports, so add one line, either in `tsconfig.json`:
 
@@ -43,6 +42,8 @@ Your application code never imports it.
 
 If a script runs without the preload flag, `debug` is undefined and calling it throws. Keep the flag in every script and let the environment gate below decide.
 
+Don't set the flag through `NODE_OPTIONS`: it would load the engine into every Node process you start (npm, nodemon, build tools), and they would delete each other's log file.
+
 ## When it is on
 
 | `NODE_ENV`            | `DEBUG_ENABLED` | Result |
@@ -57,7 +58,7 @@ When it is off, `debug` returns one shared resolved promise. Nothing reads `pack
 ## What it does when on
 
 - **Location:** captures the caller's file and line through V8's `Error.prepareStackTrace`, shown relative to `process.cwd()`.
-- **Log file:** `<name>.log` in `process.cwd()`. The name comes from `package.json` with special characters replaced (`@scope/my app` becomes `scope-my-app.log`), or `app.log` if there is no name.
+- **Log file:** `<name>.log` in `process.cwd()`, one per folder, so run a single instrumented process per folder. The name comes from `package.json` with special characters replaced (`@scope/my app` becomes `scope-my-app.log`), or `app.log` if there is no name.
 - **Terminal:** the project name in cyan and the location dimmed. Color is skipped when stdout isn't a TTY or `NO_COLOR` is set.
 - **File:** `ISO-timestamp [file:line] message`, appended asynchronously in call order. The returned promise resolves once the line is written.
 - **Cleanup:** the file is removed synchronously on `exit`, `SIGINT`, `SIGTERM` and `uncaughtException`. For signals and crashes it then exits with 130, 143 or 1, unless your app has its own listener for that event. In that case your app decides when to exit.
