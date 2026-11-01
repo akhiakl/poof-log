@@ -1,6 +1,6 @@
 # poof-log
 
-A development-only global `poof` (every `console` method, plus `poof.enabled`) for Node.js. Apps preload it (`node --import poof-log`, or `--require`), never import it. When on (`NODE_ENV=development` or `DEBUG_ENABLED=true`, never in production) it prints `[project] (file:line) message`. With `DEBUG_FILE=true` it also appends to `<project>.log` and deletes that file when the process stops. When off it does nothing.
+A development-only global `poof` (every `console` method, plus `poof.enabled`) for Node.js. Apps preload it (`node --import poof-log`, or `--require`), never import it. When on (`NODE_ENV=development` or `DEBUG_ENABLED=true`, never in production) it prints `[project] [METHOD] (file:line) message`. With `DEBUG_FILE=true` it also appends to `<project>.log` and deletes that file when the process stops. When off it does nothing.
 
 This file is the single source of rules for every AI agent and human contributor. `CLAUDE.md` only imports it. Do not fork the rules into agent-specific files.
 
