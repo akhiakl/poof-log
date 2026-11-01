@@ -82,6 +82,8 @@ pnpm build   # dist/index.mjs, index.cjs, index.d.mts, index.d.cts
 
 Git hooks (husky) install with `pnpm install`.
 
+AI agents and humans follow the same rules in [AGENTS.md](AGENTS.md). Repo skills live in `.agents/skills/` and work with any agent that reads the Agent Skills format; Claude Code reads them through symlinks in `.claude/skills/`.
+
 - **Branches** follow [Conventional Branch](https://conventional-branch.github.io): `feature/…`, `bugfix/…`, `hotfix/…`, `chore/…`, `release/…`, in lowercase-kebab-case. Checked on commit and push.
 - **Commits** follow [Conventional Commits](https://www.conventionalcommits.org), e.g. `feat: add NO_COLOR support`. Checked by commitlint.
 - **Pre-commit** runs ESLint and Prettier on staged files, then a full type-check.
