@@ -5,7 +5,6 @@
  *
  *   node --import poof-log src/server.js     (ESM apps)
  *   node --require poof-log src/server.js    (CJS apps)
- *   NODE_OPTIONS="--import poof-log" ...     (no script change at all)
  *
  * When enabled it prints `[project] (file:line) message` to stdout, appends a
  * timestamped copy to `<project>.log` in the working directory, and deletes that
@@ -17,6 +16,7 @@ import { open } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inspect } from 'node:util';
+import { isMainThread } from 'node:worker_threads';
 
 // Shipped in the emitted .d.mts/.d.cts. Apps opt into it with one line,
 // `"types": ["node", "poof-log"]` in tsconfig or `/// <reference types="poof-log" />`,
@@ -55,6 +55,7 @@ if (scope[INSTALLED] !== true) {
 function init(): (...args: unknown[]) => Promise<void> {
   const cwd = process.cwd();
   const name = readProjectName(cwd);
+  // shortcut: one log file per folder, add the process id to the name if several processes need logs
   const logPath = join(cwd, `${name}.log`);
   const color = process.stdout.isTTY && env.NO_COLOR === undefined;
   const prefix = color ? `${CYAN}[${name}]${RESET}` : `[${name}]`;
@@ -98,26 +99,29 @@ function init(): (...args: unknown[]) => Promise<void> {
     }
   };
 
-  process.on('exit', cleanup);
-  // Registering a listener replaces Node's default "terminate" behaviour, so
-  // exit with the conventional 128 + signal code, unless the app has its own
-  // listener and will shut itself down.
-  process.on('SIGINT', () => {
-    cleanup();
-    if (process.listenerCount('SIGINT') === 1) process.exit(130);
-  });
-  process.on('SIGTERM', () => {
-    cleanup();
-    if (process.listenerCount('SIGTERM') === 1) process.exit(143);
-  });
-  // Same for crashes: without this exit the error would be swallowed.
-  process.on('uncaughtException', (error) => {
-    cleanup();
-    if (process.listenerCount('uncaughtException') === 1) {
-      process.stderr.write(`${inspect(error)}\n`);
-      process.exit(1);
-    }
-  });
+  // Workers load this preload too. Their exit must not delete the main thread's log file.
+  if (isMainThread) {
+    process.on('exit', cleanup);
+    // A listener replaces Node's default "terminate" behaviour, so exit with the conventional
+    // 128 + signal code ourselves. `once` removes our listener before it runs, so a library that
+    // re-raises the signal only when it is the last listener (signal-exit) can finish the job.
+    process.once('SIGINT', () => {
+      cleanup();
+      if (process.listenerCount('SIGINT') === 0) process.exit(130);
+    });
+    process.once('SIGTERM', () => {
+      cleanup();
+      if (process.listenerCount('SIGTERM') === 0) process.exit(143);
+    });
+    // Same for crashes: without this exit the error would be swallowed.
+    process.on('uncaughtException', (error) => {
+      cleanup();
+      if (process.listenerCount('uncaughtException') === 1) {
+        process.stderr.write(`${inspect(error)}\n`);
+        process.exit(1);
+      }
+    });
+  }
 
   return debug;
 }

@@ -94,6 +94,43 @@ describe('enabled', () => {
     expect(existsSync(logFile)).toBe(false);
   });
 
+  it('still exits on Ctrl+C when a signal-exit style library listens too', async () => {
+    const child = spawn(process.execPath, args('--import', 'signal-exit-style.mjs'), {
+      cwd: appDir,
+      env: childEnv({ NODE_ENV: 'development' }),
+    });
+    await new Promise<void>((resolve) => {
+      child.stdout.on('data', (chunk: Buffer) => {
+        if (chunk.toString().includes('READY')) resolve();
+      });
+    });
+
+    child.kill('SIGINT');
+    const outcome = await Promise.race([
+      new Promise<'exited'>((resolve) =>
+        child.on('close', () => {
+          resolve('exited');
+        }),
+      ),
+      new Promise<'hung'>((resolve) =>
+        setTimeout(() => {
+          resolve('hung');
+        }, 3000),
+      ),
+    ]);
+    child.kill('SIGKILL');
+
+    expect(outcome).toBe('exited');
+    expect(existsSync(logFile)).toBe(false);
+  });
+
+  it('keeps the log file when a worker thread exits', () => {
+    const result = run('log-after-worker.mjs', { NODE_ENV: 'development' });
+
+    expect(result.stdout).toContain('LOG_EXISTS:true\n');
+    expect(existsSync(logFile)).toBe(false);
+  });
+
   it('removes the file and exits 1 on an uncaught exception', () => {
     const result = run('log-and-throw.mjs', { NODE_ENV: 'development' });
 

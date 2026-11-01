@@ -1,0 +1,1 @@
+await debug('from worker');
