@@ -11,6 +11,8 @@ permissions:
 jobs:
   check:
     name: PR description filled in
+    # Dependabot PR descriptions are generated and can't follow the template.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
