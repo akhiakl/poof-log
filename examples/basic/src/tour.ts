@@ -7,7 +7,6 @@ poof.debug('detail while chasing a bug');
 poof.info('server listening', { port: 3000 });
 poof.warn('slow query', { ms: 840 });
 poof.error('payment failed', new Error('card declined'));
-poof.error('payment failed', new Error('card declined'));
 
 // Format strings work like console.log.
 poof.log('%s has %d items (%o)', 'cart', 3, { total: 29.5 });
