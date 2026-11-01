@@ -73,7 +73,7 @@ pnpm build   # dist/index.mjs, index.cjs, index.d.mts, index.d.cts
 ## Security checks
 
 - **CodeQL** scans the code on every PR, on pushes to `main` and weekly.
-- **Snyk** scans dependencies for high and critical vulnerabilities. It needs a `SNYK_TOKEN` repository secret (Settings → Secrets and variables → Actions) and skips itself with a notice until it exists.
+- **Snyk** scans dependencies through its GitHub integration: import the repo at snyk.io (no token or workflow needed). It rescans on a schedule and adds a check to PRs.
 - **Socket Firewall** (free, no token) blocks malicious packages while CI installs dependencies.
 - **Dependabot** opens weekly update PRs for npm and GitHub Actions. TypeScript and `@types/node` major bumps are ignored on purpose.
 - **CODEOWNERS** makes `@akhiakl` the default reviewer.
