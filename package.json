@@ -3,9 +3,7 @@
   "version": "1.0.0",
   "description": "Development-only global debug() for Node.js: file:line logs to stdout and a temp log file that deletes itself on exit.",
   "type": "module",
-  "sideEffects": true,
   "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "exports": {
     ".": {
