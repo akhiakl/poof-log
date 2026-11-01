@@ -1,0 +1,26 @@
+name: PR template
+
+# `synchronize` too, so the check reports on every new commit when it's required.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: PR description filled in
+    # Dependabot PR descriptions are generated and can't follow the template.
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Cone mode: entries are directories. The checker reads the template next to it.
+          sparse-checkout: .github
+      - name: Check the PR description against the template
+        # Passed through env, never interpolated into the script, so the body can't inject shell.
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: bash .github/scripts/check-pr-body.sh

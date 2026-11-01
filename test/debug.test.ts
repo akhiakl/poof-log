@@ -1,0 +1,181 @@
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { afterEach, describe, expect, it } from 'vitest';
+
+const root = fileURLToPath(new URL('..', import.meta.url));
+const appDir = join(root, 'test/fixtures/app');
+const src = join(root, 'src/index.ts');
+// The built files that ship: `exports.import` and `exports.require`.
+const distEsm = join(root, 'dist/index.mjs');
+const distCjs = join(root, 'dist/index.cjs');
+const logFile = join(appDir, 'demo-my-app-.log');
+
+type Env = Record<string, string | undefined>;
+
+/** Development with the opt-in log file, which is what most tests exercise. */
+const dev: Env = { NODE_ENV: 'development', DEBUG_FILE: 'true' };
+type Preload = '--import' | '--require';
+
+/** Child env without the parent's NODE_ENV (Vitest sets it to "test"). */
+function childEnv(overrides: Env): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env, NODE_ENV: undefined, DEBUG_ENABLED: undefined };
+  Object.assign(env, overrides);
+  for (const key of Object.keys(env)) if (env[key] === undefined) Reflect.deleteProperty(env, key);
+  return env;
+}
+
+/** Preloads the engine exactly like an app would: no import in the script itself. */
+function args(preload: Preload, script: string, entry = src): string[] {
+  return [preload, preload === '--import' ? pathToFileURL(entry).href : entry, script];
+}
+
+function run(script: string, env: Env, preload: Preload = '--import', entry = src) {
+  return spawnSync(process.execPath, args(preload, script, entry), {
+    cwd: appDir,
+    env: childEnv(env),
+    encoding: 'utf8',
+  });
+}
+
+afterEach(() => {
+  rmSync(logFile, { force: true });
+});
+
+describe('disabled', () => {
+  it.each<[string, Env]>([
+    ['production', { NODE_ENV: 'production' }],
+    ['production even with DEBUG_ENABLED', { NODE_ENV: 'production', DEBUG_ENABLED: 'true' }],
+    ['production even with DEBUG_FILE', { NODE_ENV: 'production', DEBUG_FILE: 'true' }],
+    ['NODE_ENV unset', {}],
+    ['NODE_ENV=test', { NODE_ENV: 'test' }],
+  ])('is a silent no-op: %s', (_label, env) => {
+    const result = run('log-and-exit.mjs', env);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe('RETURN:undefined\nLOG:<none>\nSIGINT_LISTENERS:0\n');
+    expect(existsSync(logFile)).toBe(false);
+  });
+
+  it.each<[string, Preload, string]>([
+    ['dist/index.mjs via --import', '--import', distEsm],
+    ['dist/index.cjs via --require', '--require', distCjs],
+  ])('is a silent no-op in production: %s', (_label, preload, entry) => {
+    const result = run('log-and-exit.mjs', { NODE_ENV: 'production' }, preload, entry);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe('RETURN:undefined\nLOG:<none>\nSIGINT_LISTENERS:0\n');
+    expect(existsSync(logFile)).toBe(false);
+  });
+});
+
+describe('enabled', () => {
+  it.each<[string, Env, Preload, string]>([
+    ['src, NODE_ENV=development via --import', dev, '--import', src],
+    [
+      'src, DEBUG_ENABLED=true via --import',
+      { DEBUG_ENABLED: 'true', DEBUG_FILE: 'true' },
+      '--import',
+      src,
+    ],
+    ['dist/index.mjs via --import', dev, '--import', distEsm],
+    ['dist/index.cjs via --require', dev, '--require', distCjs],
+  ])(
+    'logs to stdout and file without waiting, then removes it: %s',
+    (_label, env, preload, entry) => {
+      const result = run('log-and-exit.mjs', env, preload, entry);
+
+      expect(result.status).toBe(0);
+      // No TTY in a spawned child, so the prefix is uncolored.
+      expect(result.stdout).toContain(
+        '[demo-my-app-] (log-and-exit.mjs:4) hello { nested: { deep: [ 1, 2 ] } }\n',
+      );
+      expect(result.stdout).toMatch(
+        /LOG:\d{4}-\d{2}-\d{2}T[\d:.]+Z \[log-and-exit\.mjs:4\] hello \{ nested: \{ deep: \[ 1, 2 \] \} \}\n/,
+      );
+      // debug() hands the write to the background and returns at once.
+      expect(result.stdout).toContain('RETURN:undefined\n');
+      expect(result.stdout).toContain('SIGINT_LISTENERS:1\n');
+      expect(existsSync(logFile)).toBe(false);
+    },
+  );
+
+  it('prints to the terminal only, with no file and no listeners, unless DEBUG_FILE=true', () => {
+    const result = run('log-and-exit.mjs', { NODE_ENV: 'development' });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain(
+      '[demo-my-app-] (log-and-exit.mjs:4) hello { nested: { deep: [ 1, 2 ] } }\n',
+    );
+    expect(result.stdout).toContain('RETURN:undefined\nLOG:<none>\nSIGINT_LISTENERS:0\n');
+    expect(existsSync(logFile)).toBe(false);
+  });
+
+  it.each<[NodeJS.Signals, number]>([
+    ['SIGINT', 130],
+    ['SIGTERM', 143],
+  ])('removes the file and exits on %s', async (signal, code) => {
+    const child = spawn(process.execPath, args('--import', 'log-and-wait.mjs'), {
+      cwd: appDir,
+      env: childEnv(dev),
+    });
+    await new Promise<void>((resolve) => {
+      child.stdout.on('data', (chunk: Buffer) => {
+        if (chunk.toString().includes('READY')) resolve();
+      });
+    });
+    expect(existsSync(logFile)).toBe(true);
+
+    child.kill(signal);
+    const exitCode = await new Promise<number | null>((resolve) => child.on('close', resolve));
+
+    expect(exitCode).toBe(code);
+    expect(existsSync(logFile)).toBe(false);
+  });
+
+  it('still exits on Ctrl+C when a signal-exit style library listens too', async () => {
+    const child = spawn(process.execPath, args('--import', 'signal-exit-style.mjs'), {
+      cwd: appDir,
+      env: childEnv(dev),
+    });
+    await new Promise<void>((resolve) => {
+      child.stdout.on('data', (chunk: Buffer) => {
+        if (chunk.toString().includes('READY')) resolve();
+      });
+    });
+
+    child.kill('SIGINT');
+    const outcome = await Promise.race([
+      new Promise<'exited'>((resolve) =>
+        child.on('close', () => {
+          resolve('exited');
+        }),
+      ),
+      new Promise<'hung'>((resolve) =>
+        setTimeout(() => {
+          resolve('hung');
+        }, 3000),
+      ),
+    ]);
+    child.kill('SIGKILL');
+
+    expect(outcome).toBe('exited');
+    expect(existsSync(logFile)).toBe(false);
+  });
+
+  it('keeps the log file when a worker thread exits', () => {
+    const result = run('log-after-worker.mjs', dev);
+
+    expect(result.stdout).toContain('LOG_EXISTS:true\n');
+    expect(existsSync(logFile)).toBe(false);
+  });
+
+  it('removes the file and exits 1 on an uncaught exception', () => {
+    const result = run('log-and-throw.mjs', dev);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Error: boom');
+    expect(existsSync(logFile)).toBe(false);
+  });
+});

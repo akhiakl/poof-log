@@ -1,0 +1,30 @@
+# Snyk policy. Each ignore is a dev-only transitive dependency with no fixed version.
+# poof-log has no runtime dependencies, so none of these ship to users.
+# Ignores expire so they get reviewed again. Drop one as soon as a fix exists.
+version: v1.25.0
+ignore:
+  SNYK-JS-URIJS-19963963:
+    - '*':
+        reason: >-
+          uri-js infinite loop. Dev tooling only, never installed by users. uri-js comes from ESLint (ajv@6) and no fixed version exists.
+        expires: 2027-02-01T00:00:00.000Z
+        created: 2026-11-01T00:00:00.000Z
+  SNYK-JS-URIJS-19963961:
+    - '*':
+        reason: >-
+          uri-js improper escaping. Dev tooling only, never installed by users. uri-js comes from ESLint (ajv@6) and no fixed version exists.
+        expires: 2027-02-01T00:00:00.000Z
+        created: 2026-11-01T00:00:00.000Z
+  SNYK-JS-URIJS-20341609:
+    - '*':
+        reason: >-
+          uri-js uncaught exception. Dev tooling only, never installed by users. uri-js comes from ESLint (ajv@6) and no fixed version exists.
+        expires: 2027-02-01T00:00:00.000Z
+        created: 2026-11-01T00:00:00.000Z
+  SNYK-JS-PICOMATCH-21248802:
+    - '*':
+        reason: >-
+          picomatch ReDoS. Dev tooling only, never installed by users. picomatch comes from lint-staged, already on its latest version, and no fixed version exists.
+        expires: 2027-02-01T00:00:00.000Z
+        created: 2026-11-01T00:00:00.000Z
+patch: {}

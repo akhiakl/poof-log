@@ -1,0 +1,2 @@
+sh .husky/check-branch-name
+pnpm exec lint-staged
