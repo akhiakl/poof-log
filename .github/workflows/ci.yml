@@ -80,8 +80,8 @@ jobs:
           name: publish-dry-run
           run: |
             pnpm pack --pack-destination "$RUNNER_TEMP/pack"
-            cd "$RUNNER_TEMP"
-            npm publish ./pack/poof-log-*.tgz --dry-run --access public
+            # Subshell: the runner tees output to a relative ci-results/ path, so keep the cwd.
+            (cd "$RUNNER_TEMP" && npm publish ./pack/poof-log-*.tgz --dry-run --access public)
       # Installs examples/basic against the dist/ built above, so its tsconfig and types stay honest.
       - uses: akhiakl/ci-workflows@v1.4.0
         id: example
