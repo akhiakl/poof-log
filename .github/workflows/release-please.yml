@@ -1,0 +1,25 @@
+name: release-please
+
+# Opens a release PR that bumps package.json and CHANGELOG.md from Conventional
+# Commits merged to main. Merging it creates the GitHub Release and tag, which
+# triggers release.yml. RELEASE_PLEASE_TOKEN must be a PAT (or app token): a
+# release created with the default GITHUB_TOKEN does not trigger other workflows.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v5
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

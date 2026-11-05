@@ -1,6 +1,10 @@
 {
   "name": "poof-log",
   "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/akhiakl/poof-log.git"
+  },
   "description": "Development-only global poof for Node.js: every console method, with [project] [LEVEL] (file:line) prefixes and an optional log file that deletes itself on exit.",
   "type": "module",
   "main": "./dist/index.cjs",
