@@ -70,6 +70,18 @@ jobs:
         with:
           name: build
           run: pnpm run build
+      # Catches publish-time problems (files list, devEngines, version) on the PR, not on release day.
+      # Mirrors release.yml: pack with pnpm, then npm publishes the tarball from outside the repo.
+      - uses: akhiakl/ci-workflows@v1.4.0
+        id: publish
+        if: matrix.version == 24
+        continue-on-error: true
+        with:
+          name: publish-dry-run
+          run: |
+            pnpm pack --pack-destination "$RUNNER_TEMP/pack"
+            cd "$RUNNER_TEMP"
+            npm publish ./pack/poof-log-*.tgz --dry-run --access public
       # Installs examples/basic against the dist/ built above, so its tsconfig and types stay honest.
       - uses: akhiakl/ci-workflows@v1.4.0
         id: example
@@ -89,7 +101,8 @@ jobs:
         if: >-
           steps.format.outcome == 'failure' || steps.lint.outcome == 'failure' ||
           steps.typecheck.outcome == 'failure' || steps.test.outcome == 'failure' ||
-          steps.build.outcome == 'failure' || steps.example.outcome == 'failure'
+          steps.build.outcome == 'failure' || steps.publish.outcome == 'failure' ||
+          steps.example.outcome == 'failure'
         run: exit 1
 
   # The one check to require in branch protection, plus the sticky PR comment.
