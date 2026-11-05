@@ -51,8 +51,12 @@ jobs:
             exit 1
           fi
       # Trusted publishing (OIDC) needs npm >= 11.5.1 and pnpm publish does not
-      # support it yet, so publish with npm. No NPM_TOKEN is used.
+      # support it yet, so publish with npm. No NPM_TOKEN is used. npm refuses to run
+      # inside this repo because devEngines requires pnpm (EBADDEVENGINES), so pack
+      # with pnpm and publish the tarball from outside the repo folder.
       - name: Publish to npm
         run: |
           npm install -g npm@^11.5.1
-          npm publish --access public --provenance
+          pnpm pack --pack-destination "$RUNNER_TEMP/pack"
+          cd "$RUNNER_TEMP"
+          npm publish ./pack/poof-log-*.tgz --access public --provenance
