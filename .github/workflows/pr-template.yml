@@ -11,8 +11,10 @@ permissions:
 jobs:
   check:
     name: PR description filled in
-    # Dependabot PR descriptions are generated and can't follow the template.
-    if: github.actor != 'dependabot[bot]'
+    # Dependabot and release-please PR descriptions are generated and can't follow the template.
+    if: >-
+      github.actor != 'dependabot[bot]' &&
+      !startsWith(github.head_ref, 'release-please--')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

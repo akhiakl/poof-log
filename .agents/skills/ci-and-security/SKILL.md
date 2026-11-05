@@ -20,7 +20,7 @@ description: How poof-log's GitHub Actions, Dependabot, CodeQL, Snyk and depende
 - **Use the exact tag for `akhiakl/ci-workflows`.** Its moving `v1` tag lagged `v1.4.0`, so check `gh api repos/akhiakl/ci-workflows/tags` before choosing.
 - Keep the Node matrix in sync with `engines` in `package.json`. Do not repeat versions in labels.
 - Pass untrusted values (PR body, titles) to scripts through `env`, never by interpolating `${{ }}` into a `run:` script.
-- Dependabot PRs skip `pr-template.yml` and the Quality Gate job (generated bodies, read-only token). Keep those `if:` guards.
+- Dependabot PRs skip `pr-template.yml` and the Quality Gate job (generated bodies, read-only token). Release-please PRs (head branch `release-please--*`) also skip `pr-template.yml`, and `CHANGELOG.md` is in `.prettierignore` because it is generated. Keep those guards.
 - Test a workflow change by what it does, not just by `prettier --check`: run the script locally, then read the PR's check results after pushing.
 
 ## Dependencies and security findings
