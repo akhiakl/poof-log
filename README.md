@@ -1,12 +1,25 @@
 # poof-log
 
-A development-only global `poof` for Node.js. It has every method `console` has (`log`, `info`, `warn`, `error`, `table`, `group`, `time`, `count`, `assert`, `dir`, …) and they behave the same, plus `poof.enabled`. It is `poof`, not `debug`, which is already an npm package. Each output line is prefixed `[project] [METHOD] (file:line)`, with the method name in brackets after the project (`[LOG]`, `[INFO]`, `[WARN]`, …). With `DEBUG_FILE=true` it also keeps a timestamped copy in `<project>.log` and deletes that file when the process exits, is interrupted, is killed, or crashes. In production it is a no-op that does no I/O.
+A development-only global `poof` for Node.js. It has every `console` method (`log`, `info`, `warn`, `error`, `table`, `group`, `time`, `count`, `assert`, `dir`, ...) and they behave the same, plus `poof.enabled`. Each line is prefixed with the project name, method and caller, so you see where a log came from:
+
+```
+[my-app] [INFO] (src/server.ts:31) listening on :3000
+```
+
+- **Zero cost in production.** When off, every method is an empty function: no I/O, no listeners.
+- **Optional log file.** `DEBUG_FILE=true` also writes `<project>.log` and deletes it when the process stops.
+- **No dependencies**, Node 24 or newer. Named `poof`, not `debug`, which is already an npm package.
 
 Your application code never imports it.
 
 ## Use
 
 1. Install it as a regular dependency, not a dev one. A production install skips dev dependencies, and `node --import poof-log` then fails to start. In production it does nothing.
+
+   ```bash
+   pnpm add poof-log   # or: npm install poof-log
+   ```
+
 2. Preload it from your dev script:
 
    ```jsonc
@@ -46,6 +59,16 @@ If a script runs without the preload flag, `poof` is undefined and calling it th
 Every method returns nothing and never waits: don't `await` it. Printing and the file write happen in the background.
 
 Don't set the flag through `NODE_OPTIONS`: it would load the engine into every Node process you start (npm, nodemon, build tools), and with `DEBUG_FILE=true` they would delete each other's log file.
+
+## Environment variables
+
+| Variable        | Values                       | Effect                                                      |
+| --------------- | ---------------------------- | ----------------------------------------------------------- |
+| `NODE_ENV`      | `development` / `production` | `development` turns it on, `production` always turns it off |
+| `DEBUG_ENABLED` | `true`                       | Turns it on when `NODE_ENV` is not set to either            |
+| `DEBUG_FILE`    | `true` / `keep`              | Also write `<project>.log` (deleted on exit, or kept)       |
+| `NO_COLOR`      | any                          | Turns terminal color off                                    |
+| `FORCE_COLOR`   | any                          | Keeps color when the stream is not a TTY                    |
 
 ## When it is on
 

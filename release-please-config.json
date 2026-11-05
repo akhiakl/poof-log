@@ -5,16 +5,48 @@
   "packages": {
     ".": {
       "changelog-sections": [
-        { "type": "feat", "section": "Features" },
-        { "type": "fix", "section": "Bug Fixes" },
-        { "type": "perf", "section": "Performance" },
-        { "type": "refactor", "section": "Code Refactoring" },
-        { "type": "docs", "section": "Documentation" },
-        { "type": "build", "section": "Build System" },
-        { "type": "ci", "section": "Continuous Integration", "hidden": true },
-        { "type": "chore", "section": "Chores", "hidden": true },
-        { "type": "test", "section": "Tests", "hidden": true }
-      ]
+        {
+          "type": "feat",
+          "section": "Features"
+        },
+        {
+          "type": "fix",
+          "section": "Bug Fixes"
+        },
+        {
+          "type": "perf",
+          "section": "Performance"
+        },
+        {
+          "type": "refactor",
+          "section": "Code Refactoring"
+        },
+        {
+          "type": "docs",
+          "section": "Documentation"
+        },
+        {
+          "type": "build",
+          "section": "Build System"
+        },
+        {
+          "type": "ci",
+          "section": "Continuous Integration",
+          "hidden": true
+        },
+        {
+          "type": "chore",
+          "section": "Chores",
+          "hidden": true
+        },
+        {
+          "type": "test",
+          "section": "Tests",
+          "hidden": true
+        }
+      ],
+      "release-as": "1.1.0"
     }
-  }
+  },
+  "last-release-sha": "bd8b5861b2e7931c7b9bccd1b499957d470a1dd6"
 }
