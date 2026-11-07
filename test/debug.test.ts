@@ -20,7 +20,12 @@ type Preload = '--import' | '--require';
 
 /** Child env without the parent's NODE_ENV (Vitest sets it to "test"). */
 function childEnv(overrides: Env): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env, NODE_ENV: undefined, DEBUG_ENABLED: undefined };
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    NODE_ENV: undefined,
+    DEBUG_ENABLED: undefined,
+    DEBUG_CONSOLE: undefined,
+  };
   Object.assign(env, overrides);
   for (const key of Object.keys(env)) if (env[key] === undefined) Reflect.deleteProperty(env, key);
   return env;
@@ -50,6 +55,39 @@ describe('types', () => {
     for (const level of ['log', 'debug', 'info', 'warn', 'error']) {
       expect(dts).toMatch(new RegExp(String.raw`/\*\*[^]*?@example[^]*?\*/\s*${level}\(`));
     }
+  });
+});
+
+describe('console patch (DEBUG_CONSOLE=true)', () => {
+  const on: Env = { NODE_ENV: 'development', DEBUG_CONSOLE: 'true' };
+
+  it('routes console methods through poof, with the caller location', () => {
+    const result = run('console-patch.mjs', on);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout.split('\n').slice(0, 2)).toEqual([
+      '[demo-my-app-] [LOG] (console-patch.mjs:1) a { n: { d: [ 1 ] } }',
+      '[demo-my-app-] [LOG] (console-patch.mjs:3) x is 5',
+    ]);
+    expect(result.stdout).toContain('[demo-my-app-] [TABLE] (console-patch.mjs:4)\n');
+    expect(result.stderr).toBe('[demo-my-app-] [WARN] (console-patch.mjs:2) w\n');
+  });
+
+  it('leaves console alone unless asked', () => {
+    const result = run('console-patch.mjs', { NODE_ENV: 'development' });
+
+    expect(result.stdout.split('\n').slice(0, 2)).toEqual(['a { n: { d: [ 1 ] } }', 'x is 5']);
+    expect(result.stderr).toBe('w\n');
+  });
+
+  it.each<[string, Env]>([
+    ['production', { NODE_ENV: 'production', DEBUG_CONSOLE: 'true' }],
+    ['not enabled', { DEBUG_CONSOLE: 'true' }],
+  ])('leaves console alone when poof is off: %s', (_label, env) => {
+    const result = run('console-patch.mjs', env);
+
+    expect(result.stdout.split('\n').slice(0, 2)).toEqual(['a { n: { d: [ 1 ] } }', 'x is 5']);
+    expect(result.stderr).toBe('w\n');
   });
 });
 
