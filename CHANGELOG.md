@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/akhiakl/poof-log/compare/v1.1.0...v1.2.0) (2026-11-07)
+
+
+### Features
+
+* add opt-in DEBUG_CONSOLE to route console through poof ([#9](https://github.com/akhiakl/poof-log/issues/9)) ([655d4b1](https://github.com/akhiakl/poof-log/commit/655d4b1bfa2ed13187dd91af02e13089c7a217c0))
+
 ## [1.1.0](https://github.com/akhiakl/poof-log/compare/v1.0.0...v1.1.0) (2026-11-05)
 
 
