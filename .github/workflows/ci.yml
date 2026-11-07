@@ -81,7 +81,17 @@ jobs:
           run: |
             pnpm pack --pack-destination "$RUNNER_TEMP/pack"
             # Subshell: the runner tees output to a relative ci-results/ path, so keep the cwd.
-            (cd "$RUNNER_TEMP" && npm publish ./pack/poof-log-*.tgz --dry-run --access public)
+            (
+              cd "$RUNNER_TEMP"
+              status=0
+              out=$(npm publish ./pack/poof-log-*.tgz --dry-run --access public 2>&1) || status=$?
+              echo "$out"
+              # The version in package.json is already on npm everywhere but on a release PR, and
+              # npm rejects that even for a dry-run. It is not a packaging problem, so let it pass.
+              if [ "$status" -ne 0 ] && ! echo "$out" | grep -q 'previously published'; then
+                exit "$status"
+              fi
+            )
       # Installs examples/basic against the dist/ built above, so its tsconfig and types stay honest.
       - uses: akhiakl/ci-workflows@v1.4.0
         id: example
