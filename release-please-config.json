@@ -44,9 +44,7 @@
           "section": "Tests",
           "hidden": true
         }
-      ],
-      "release-as": "1.1.0"
+      ]
     }
-  },
-  "last-release-sha": "bd8b5861b2e7931c7b9bccd1b499957d470a1dd6"
+  }
 }
