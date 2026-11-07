@@ -60,12 +60,23 @@ Every method returns nothing and never waits: don't `await` it. Printing and the
 
 Don't set the flag through `NODE_OPTIONS`: it would load the engine into every Node process you start (npm, nodemon, build tools), and with `DEBUG_FILE=true` they would delete each other's log file.
 
+## Use `console.log` as is
+
+Prefer not to change any code? Set `DEBUG_CONSOLE=true` and `console.log`, `console.warn`, `console.table` and the other `console` methods behave exactly like their `poof` twins: the same prefix, location and optional log file.
+
+```jsonc
+"dev": "NODE_ENV=development DEBUG_CONSOLE=true node --import poof-log src/server.js"
+```
+
+It is opt-in and only applies while poof is on, so production never touches `console`. It also covers `console` calls made by your dependencies, which then get the project prefix too.
+
 ## Environment variables
 
 | Variable        | Values                       | Effect                                                      |
 | --------------- | ---------------------------- | ----------------------------------------------------------- |
 | `NODE_ENV`      | `development` / `production` | `development` turns it on, `production` always turns it off |
 | `DEBUG_ENABLED` | `true`                       | Turns it on when `NODE_ENV` is not set to either            |
+| `DEBUG_CONSOLE` | `true`                       | Also route the global `console` through poof (see below)    |
 | `DEBUG_FILE`    | `true` / `keep`              | Also write `<project>.log` (deleted on exit, or kept)       |
 | `NO_COLOR`      | any                          | Turns terminal color off                                    |
 | `FORCE_COLOR`   | any                          | Keeps color when the stream is not a TTY                    |

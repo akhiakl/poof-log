@@ -14,6 +14,7 @@
  * and that file is deleted again when the process exits, is interrupted, is
  * killed, or crashes (DEBUG_FILE=keep leaves it in place). The methods return at once: nothing waits for the file
  * write. When disabled (production, or not opted in) every method is a no-op.
+ * DEBUG_CONSOLE=true additionally replaces the global `console` methods with the same functions.
  * The global is `poof`, not `debug`, which the `debug` package already owns.
  */
 import { appendFileSync, readFileSync, unlinkSync } from 'node:fs';
@@ -149,6 +150,8 @@ const enabled =
 // `true` deletes it when the process stops; `keep` leaves it, for reading after the app is gone.
 const keep = env.DEBUG_FILE === 'keep';
 const toFile = env.DEBUG_FILE === 'true' || keep;
+// Opt-in: also route the global `console` through poof. Only read once poof is on.
+const patchConsole = env.DEBUG_CONSOLE === 'true';
 
 const scope = globalThis as typeof globalThis & { [INSTALLED]?: true };
 if (scope[INSTALLED] !== true) {
@@ -340,6 +343,11 @@ function init(): Poof {
   }
 
   const methods = Object.fromEntries([...LEVELS, ...INHERITED].map((name) => [name, make(name)]));
+  // DEBUG_CONSOLE=true: `console.log` and the rest become the same functions, so existing calls get
+  // the prefix and the log file too. Safe from recursion: output goes through the private `Console`
+  // above and the process streams, never through the global `console`. `locate` cuts the stack at
+  // the method itself, so the location is still the caller's.
+  if (patchConsole) Object.assign(console, methods);
   return { ...methods, enabled: true } as unknown as Poof;
 }
 
