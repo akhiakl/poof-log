@@ -150,7 +150,7 @@ const enabled =
 // `true` deletes it when the process stops; `keep` leaves it, for reading after the app is gone.
 const keep = env.DEBUG_FILE === 'keep';
 const toFile = env.DEBUG_FILE === 'true' || keep;
-// Opt-in: also route the global `console` through poof. Only read once poof is on.
+// Opt-in: also route the global `console` through poof. Read here, but only acted on by `init()`.
 const patchConsole = env.DEBUG_CONSOLE === 'true';
 
 const scope = globalThis as typeof globalThis & { [INSTALLED]?: true };

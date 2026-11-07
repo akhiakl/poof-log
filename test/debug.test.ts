@@ -20,7 +20,12 @@ type Preload = '--import' | '--require';
 
 /** Child env without the parent's NODE_ENV (Vitest sets it to "test"). */
 function childEnv(overrides: Env): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env, NODE_ENV: undefined, DEBUG_ENABLED: undefined };
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    NODE_ENV: undefined,
+    DEBUG_ENABLED: undefined,
+    DEBUG_CONSOLE: undefined,
+  };
   Object.assign(env, overrides);
   for (const key of Object.keys(env)) if (env[key] === undefined) Reflect.deleteProperty(env, key);
   return env;

@@ -76,7 +76,7 @@ It is opt-in and only applies while poof is on, so production never touches `con
 | --------------- | ---------------------------- | ----------------------------------------------------------- |
 | `NODE_ENV`      | `development` / `production` | `development` turns it on, `production` always turns it off |
 | `DEBUG_ENABLED` | `true`                       | Turns it on when `NODE_ENV` is not set to either            |
-| `DEBUG_CONSOLE` | `true`                       | Also route the global `console` through poof (see below)    |
+| `DEBUG_CONSOLE` | `true`                       | Also route the global `console` through poof (see above)    |
 | `DEBUG_FILE`    | `true` / `keep`              | Also write `<project>.log` (deleted on exit, or kept)       |
 | `NO_COLOR`      | any                          | Turns terminal color off                                    |
 | `FORCE_COLOR`   | any                          | Keeps color when the stream is not a TTY                    |
